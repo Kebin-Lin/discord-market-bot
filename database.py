@@ -1,4 +1,4 @@
-import os
+import os, atexit
 from datetime import datetime
 import psycopg2
 
@@ -16,7 +16,7 @@ def setup():
             itemName VARCHAR(64) NOT NULL,
             price NUMERIC NOT NULL,
             notes TEXT,
-            timeAdded TIMESTAMP
+            timeAdded TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
         '''
     )
@@ -27,6 +27,16 @@ def setup():
             listingID SERIAL REFERENCES listings(listingID) ON DELETE CASCADE,
             tag VARCHAR(32) NOT NULL
         )
+        '''
+    )
+    cursor.execute(
+        '''
+        CREATE OR REPLACE FUNCTION expireRows() RETURNS void AS $$
+            BEGIN
+                DELETE FROM listings WHERE timeAdded < NOW() - INTERVAL '3 days';
+            END;
+        $$
+        LANGUAGE plpgsql;
         '''
     )
 
@@ -40,11 +50,11 @@ def addListing(server, listerID, itemName, price, notes, tags):
         return False
     cursor.execute(
         '''
-        INSERT INTO listings (server, listerID, itemName, price, notes, timeAdded)
-        VALUES (%s, %s, %s, %s, %s, %s)
+        INSERT INTO listings (server, listerID, itemName, price, notes)
+        VALUES (%s, %s, %s, %s, %s)
         RETURNING listingID
         ''',
-        (server, listerID, itemName, price, notes, datetime.now(),)
+        (server, listerID, itemName, price, notes,)
     )
     listingID = cursor.fetchone()[0]
     for i in tags:
@@ -52,3 +62,8 @@ def addListing(server, listerID, itemName, price, notes, tags):
 
 def removeListing(listingID):
     cursor.execute("DELETE FROM listings WHERE listingID = %s", (listingID,))
+
+@atexit.register
+def saveChanges():
+    conn.commit()
+    cursor.close()
