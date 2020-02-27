@@ -1,5 +1,6 @@
 import os
 import discord
+import database
 
 print("Starting Market Bot")
 
