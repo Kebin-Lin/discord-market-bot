@@ -131,9 +131,12 @@ def mylistingsFunc(message, splitcontent):
             shortenedPrice = shortenPrice(float(i[4]))
         else:
             shortenedPrice = shortenPrice(int(i[4]))
+        notes = i[5]
+        if len(notes) == 0:
+            notes = "No notes"
         embed["fields"].append({
             "name": f"{i[3]} - {shortenedPrice}",
-            "value": i[5] #Notes
+            "value": notes
         })
     return None, discord.Embed.from_dict(embed)
 
