@@ -1,6 +1,33 @@
-import os
+import os, math
 import discord
 import database
+
+ABBREVIATIONS = ['', 'k', 'mil', 'bil', 'tril']
+ABBREVIATION_DICT = {
+    '' : 1,
+    'k' : 1000,
+    'm' : 1000000,
+    'mil' : 1000000,
+    'b' : 1000000000,
+    'bil' : 1000000000,
+    't' : 1000000000000,
+    'tril' : 1000000000000
+}
+
+def roundSig(n):
+    power = int(math.floor(math.log10(abs(n))))
+    if power < 1:
+        power = 0
+        return round(n, 2), power
+    return round(n, 4 - int(math.floor(math.log10(abs(n)))) - 1), power
+
+def shortenPrice(price):
+    price, power = roundSig(price)
+    if power // 3 == 0:
+        return str(price)
+    if power > 14:
+        return "{:.3e}".format(price)
+    return str(price / (10 ** (power // 3 * 3))) + ABBREVIATIONS[power // 3]
 
 def helpFunc(message, splitcontent):
     output = ""
@@ -41,12 +68,25 @@ def listFunc(message, splitcontent):
 
     if len(data['price:']) == 0:
         return "No price given", None
+    suffix = ''
+    data['price:'] = data['price:'][0]
+    if data['price:'][-1].isalpha():
+        for i in range(len(data['price:']) - 1, 0, -1):
+            if data['price:'][i].isnumeric():
+                suffix = data['price:'][i + 1:]
+                data['price:'] = data['price:'][:i + 1]
+                break
+    suffix = suffix.lower()
+    if suffix not in ABBREVIATION_DICT:
+        return "Invalid suffix", None
     try:
-        data['price:'] = eval(data['price:'][0])
+        data['price:'] = eval(data['price:'])
     except:
         return "Invalid price", None
     if data['price:'] < 0:
         return "Cannot list a negative price", None
+    data['price:'] *= ABBREVIATION_DICT[suffix]
+    data['price:'] = roundSig(data['price:'])[0]
 
     data['notes:'] = ' '.join(data['notes:'])
     if len(data['notes:']) > 300:
@@ -58,7 +98,8 @@ def listFunc(message, splitcontent):
     if len(data['name:']) > 64:
         return "Name too long", None
 
-    if database.addListing(marketID, message.author.id, data['name:'], data['price:'], data['notes:'], data['tags:']):
+    # return str(data['price:']), None
+    if database.addListing(marketID, message.author.id, data['name:'], roundSig(data['price:'])[0], data['notes:'], data['tags:']):
         return f"Listing added: {str(data)}", None
     else:
         return "Listing failed to be added, maybe you have too many listings?", None
@@ -86,8 +127,12 @@ def mylistingsFunc(message, splitcontent):
         "fields" : []
     }
     for i in listings:
+        if i[4] % 1 != 0:
+            shortenedPrice = shortenPrice(float(i[4]))
+        else:
+            shortenedPrice = shortenPrice(int(i[4]))
         embed["fields"].append({
-            "name": f"{i[3]} - {i[4]}",
+            "name": f"{i[3]} - {shortenedPrice}",
             "value": i[5] #Notes
         })
     return None, discord.Embed.from_dict(embed)
@@ -108,8 +153,8 @@ COMMAND_SET = {
         'function' : helpFunc
     },
     'list' : {
-        'helpmsg' : 'Lists a new item',
-        'usage' : '!market list name: <item name (max 64 characters)> price: <non negative number> notes: <notes (max 300 characters)> tags: <tag1 (max 32 characters)> <tag2> ... <tag10>',
+        'helpmsg' : 'Lists a new item, prices are rounded to 4 significant figures',
+        'usage' : '!market list name: <item name (max 64 characters)> price: <non negative number with up to two decimals> notes: <notes (max 300 characters)> tags: <tag1 (max 32 characters)> <tag2> ... <tag10>',
         'function' : listFunc
     },
     'mylistings' : {
