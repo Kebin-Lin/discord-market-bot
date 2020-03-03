@@ -1,35 +1,9 @@
 import os, math
 import discord
-import database
+from util import database
+from util.extrafuncs import *
 
-ABBREVIATIONS = ['', 'k', 'mil', 'bil', 'tril']
-ABBREVIATION_DICT = {
-    '' : 1,
-    'k' : 1000,
-    'm' : 1000000,
-    'mil' : 1000000,
-    'b' : 1000000000,
-    'bil' : 1000000000,
-    't' : 1000000000000,
-    'tril' : 1000000000000
-}
-
-def roundSig(n):
-    power = int(math.floor(math.log10(abs(n))))
-    if power < 1:
-        power = 0
-        return round(n, 2), power
-    return round(n, 4 - int(math.floor(math.log10(abs(n)))) - 1), power
-
-def shortenPrice(price):
-    price, power = roundSig(price)
-    if power // 3 == 0:
-        return str(price)
-    if power > 14:
-        return "{:.3e}".format(price)
-    return str(price / (10 ** (power // 3 * 3))) + ABBREVIATIONS[power // 3]
-
-def helpFunc(message, splitcontent):
+async def helpFunc(message, splitcontent):
     output = ""
     if len(splitcontent) > 2:
         cmd = splitcontent[2].lower()
@@ -40,12 +14,12 @@ def helpFunc(message, splitcontent):
     else:
         for i in sorted(COMMAND_SET.keys()):
             output += f"{i} : {COMMAND_SET[i]['helpmsg']}\n"
-    return output, None
+    await message.channel.send(output)
 
-def listFunc(message, splitcontent):
+async def listFunc(message, splitcontent):
     marketID = database.getMarket(message.channel.id)
     if marketID == None:
-        return "Market not yet set", None
+        await message.channel.send("Market not yet set")
     data = {
         'price:' : [],
         'name:' : [],
@@ -61,13 +35,13 @@ def listFunc(message, splitcontent):
     
     #Compliance checks
     if len(data['tags:']) > 10:
-        return "Too many tags", None
+        await message.channel.send("Too many tags")
     for i in data['tags:']:
         if len(i) > 32:
-            return "One or more tags are too long", None
+            await message.channel.send("One or more tags are too long")
 
     if len(data['price:']) == 0:
-        return "No price given", None
+        await message.channel.send("No price given")
     suffix = ''
     data['price:'] = data['price:'][0]
     if data['price:'][-1].isalpha():
@@ -78,39 +52,38 @@ def listFunc(message, splitcontent):
                 break
     suffix = suffix.lower()
     if suffix not in ABBREVIATION_DICT:
-        return "Invalid suffix", None
+        await message.channel.send("Invalid suffix")
     try:
         data['price:'] = eval(data['price:'])
     except:
-        return "Invalid price", None
+        await message.channel.send("Invalid price")
     if data['price:'] < 0:
-        return "Cannot list a negative price", None
+        await message.channel.send("Cannot list a negative price")
     data['price:'] *= ABBREVIATION_DICT[suffix]
     data['price:'] = roundSig(data['price:'])[0]
 
     data['notes:'] = ' '.join(data['notes:'])
     if len(data['notes:']) > 300:
-        return "Notes too long", None
+        await message.channel.send("Notes too long")
 
     data['name:'] = ' '.join(data['name:'])
     if len(data['name:']) == 0:
-        return "No name given", None
+        await message.channel.send("No name given")
     if len(data['name:']) > 64:
-        return "Name too long", None
+        await message.channel.send("Name too long")
 
-    # return str(data['price:']), None
     if database.addListing(marketID, message.author.id, data['name:'], roundSig(data['price:'])[0], data['notes:'], data['tags:']):
-        return f"Listing added: {str(data)}", None
+        await message.channel.send(f"Listing added: {str(data)}")
     else:
-        return "Listing failed to be added, maybe you have too many listings?", None
+        await message.channel.send("Listing failed to be added, maybe you have too many listings?")
 
-def mylistingsFunc(message, splitcontent):
+async def mylistingsFunc(message, splitcontent):
     marketID = database.getMarket(message.channel.id)
     if marketID == None:
-        return "Market not yet set", None
+        await message.channel.send("Market not yet set")
     listings = database.getListings(marketID, message.author.id)
     if len(listings) == 0:
-        return "No listings found", None
+        await message.channel.send("No listings found")
     embed = {
         # "title" : discord.Embed.Empty,
         # "description" : discord.Embed.Empty,
@@ -138,16 +111,16 @@ def mylistingsFunc(message, splitcontent):
             "name": f"{i[3]} - {shortenedPrice}",
             "value": notes
         })
-    return None, discord.Embed.from_dict(embed)
+    await message.channel.send(embed = discord.Embed.from_dict(embed))
 
-def setmarketFunc(message, splitcontent):
+async def setmarketFunc(message, splitcontent):
     marketID = " ".join(splitcontent[2:])
     if len(marketID) == 0:
-        return "No market name supplied", None
+        await message.channel.send("No market name supplied")
     if len(marketID) > 64:
-        return "Market name too long", None
+        await message.channel.send("Market name too long")
     database.setMarket(message.channel.id, marketID)
-    return f"Market set to {database.getMarket(message.channel.id)}", None
+    await message.channel.send(f"Market set to {database.getMarket(message.channel.id)}")
 
 COMMAND_SET = {
     'help' : {
@@ -191,9 +164,7 @@ async def on_message(message):
             await message.channel.send('Invalid command, for a list of commands, use !market help')
             return
         else:
-            outputcontent, outputembed = COMMAND_SET[splitcontent[1].lower()]['function'](message, splitcontent)
-            await message.channel.send(content = outputcontent, embed = outputembed)
-
+            await COMMAND_SET[splitcontent[1].lower()]['function'](message, splitcontent)
     # await message.channel.send(output)
 
 
