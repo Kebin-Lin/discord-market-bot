@@ -1,4 +1,4 @@
-import os, math
+import os, math, asyncio
 import discord
 from util import database
 from util.extrafuncs import *
@@ -99,19 +99,76 @@ async def mylistingsFunc(message, splitcontent):
         },
         "fields" : []
     }
-    for i in listings:
-        if i[4] % 1 != 0:
-            shortenedPrice = shortenPrice(float(i[4]))
+
+    reactions = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟','❌']
+
+    def setupListings(embed, listings):
+        embed["fields"] = []
+        emotectr = 0
+        for i in listings:
+            if i[4] % 1 != 0:
+                shortenedPrice = shortenPrice(float(i[4]))
+            else:
+                shortenedPrice = shortenPrice(int(i[4]))
+            notes = i[5]
+            if len(notes) == 0:
+                notes = "No notes"
+            embed["fields"].append({
+                "name": f"{reactions[emotectr]} {i[3]} - {shortenedPrice}",
+                "value": notes
+            })
+            emotectr += 1
+    setupListings(embed, listings)
+    sentMsg = await message.channel.send(embed = discord.Embed.from_dict(embed))
+    
+    for i in range(len(listings)):
+        await sentMsg.add_reaction(reactions[i])
+    await sentMsg.add_reaction(reactions[-1])
+
+    def check(reaction, user):
+        return user == message.author and str(reaction.emoji) in reactions
+
+    waitForReaction = True
+    removemode = False
+
+    while waitForReaction:
+        try:
+            done, pending = await asyncio.wait(
+                [
+                    client.wait_for('reaction_add', check = check),
+                    client.wait_for('reaction_remove', check = check)
+                ],
+                return_when = asyncio.FIRST_COMPLETED,
+                timeout = 30,
+            )
+            #Cancel other task
+            gather = asyncio.gather(*pending)
+            gather.cancel()
+            try:
+                await gather
+            except asyncio.CancelledError:
+                pass
+            if len(done) == 0:
+                raise asyncio.TimeoutError('No change in reactions')
+            reaction, user = done.pop().result()
+        except asyncio.TimeoutError:
+            waitForReaction = False
+            embed['color'] = 0xff6961
+            await sentMsg.edit(embed = discord.Embed.from_dict(embed))
         else:
-            shortenedPrice = shortenPrice(int(i[4]))
-        notes = i[5]
-        if len(notes) == 0:
-            notes = "No notes"
-        embed["fields"].append({
-            "name": f"{i[3]} - {shortenedPrice}",
-            "value": notes
-        })
-    await message.channel.send(embed = discord.Embed.from_dict(embed))
+            emote = str(reaction.emoji)
+            match = -1
+            for i in range(10, -1, -1): #Search for matching emote in emote list
+                if reactions[i] == emote:
+                    match = i
+                    break
+            if match == 10: #X selected
+                removemode = not removemode
+            else:
+                if removemode and match < len(listings) and database.removeListing(listings[match][0]):
+                    del listings[match]
+                    setupListings(embed, listings)
+                    await sentMsg.edit(embed = discord.Embed.from_dict(embed))
 
 async def setmarketFunc(message, splitcontent):
     marketID = " ".join(splitcontent[2:])
