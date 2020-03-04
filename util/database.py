@@ -9,7 +9,7 @@ conn = psycopg2.connect(DATABASE_URL, sslmode='require')
 cursor = conn.cursor()
 
 def isAdmin(marketID, memberID):
-    cursor.execute("SELECT isadmin FROM members WHERE marketID = %s AND memberID = %s LIMIT 1")
+    cursor.execute("SELECT isadmin FROM members WHERE marketID = %s AND memberID = %s LIMIT 1", (marketID, memberID,))
     if cursor.rowcount == 0:
         return False
     return cursor.fetchall()[0][0]
@@ -34,7 +34,7 @@ def isMember(marketID, memberID):
     return cursor.rowcount == 1
 
 def removeMember(marketID, memberID):
-    cursor.execute("DELETE FROM members WHERE marketID = %s AND memberID = %s LIMIT 1", (marketID, memberID,))
+    cursor.execute("DELETE FROM members WHERE marketID = %s AND memberID = %s", (marketID, memberID,))
     return cursor.rowcount == 1
 
 def updateMember(marketID, memberID, isadmin = False):

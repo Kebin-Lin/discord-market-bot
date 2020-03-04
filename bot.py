@@ -392,7 +392,7 @@ async def addmemberFunc(message, splitcontent):
         memberID = message.mentions[0].id
     else:
         try:
-            memberID = client.get_user(eval(splitcontent[3])).id
+            memberID = client.get_user(eval(splitcontent[2])).id
         except:
             await message.channel.send("Invalid user id")
             return
@@ -415,7 +415,7 @@ async def setadminFunc(message, splitcontent):
         memberID = message.mentions[0].id
     else:
         try:
-            memberID = client.get_user(eval(splitcontent[3])).id
+            memberID = client.get_user(eval(splitcontent[2])).id
         except:
             await message.channel.send("Invalid user id")
             return
@@ -438,10 +438,13 @@ async def demoteFunc(message, splitcontent):
         memberID = message.mentions[0].id
     else:
         try:
-            memberID = client.get_user(eval(splitcontent[3])).id
+            memberID = client.get_user(eval(splitcontent[2])).id
         except:
             await message.channel.send("Invalid user id")
             return
+    if memberID == message.author.id:
+        await message.channel.send("Cannot demote self")
+        return
     database.updateMember(marketID, memberID, isadmin = False)
     await message.channel.send("User demoted")
 
@@ -461,10 +464,13 @@ async def kickFunc(message, splitcontent):
         memberID = message.mentions[0].id
     else:
         try:
-            memberID = client.get_user(eval(splitcontent[3])).id
+            memberID = client.get_user(eval(splitcontent[2])).id
         except:
             await message.channel.send("Invalid user id")
             return
+    if database.isAdmin(marketID, memberID):
+        await message.channel.send("Cannot remove an admin")
+        return
     if database.removeMember(marketID, memberID):
         await message.channel.send("User removed")
     else:
