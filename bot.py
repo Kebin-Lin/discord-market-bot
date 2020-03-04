@@ -6,20 +6,39 @@ from util.extrafuncs import *
 client = discord.Client()
 
 async def helpFunc(message, splitcontent):
-    output = ""
+    embed = {
+        "color" : 7855479,
+        "author" : {
+            "name" : "Command List",
+            "icon_url" : str(client.user.avatar_url)
+        },
+        "fields" : []
+    }
     if len(splitcontent) > 2:
         cmd = splitcontent[2].lower()
         if cmd in COMMAND_SET:
             if 'alias' in COMMAND_SET[cmd]:
                 cmd = COMMAND_SET[cmd]['alias']
-            output = f"{COMMAND_SET[cmd]['helpmsg']}\n{COMMAND_SET[cmd]['usage']}"
+            embed['author']['name'] = f"!market {cmd}"
+            embed['fields'].append({
+                'name' : "Description",
+                'value' : COMMAND_SET[cmd]['helpmsg']
+            })
+            embed['fields'].append({
+                'name' : "Usage",
+                'value' : COMMAND_SET[cmd]['usage']
+            })
         else:
-            output = 'Invalid command, for a list of commands, use !market help'
+            await message.channel.send('Invalid command, for a list of commands, use !market help')
+            return
     else:
         for i in sorted(COMMAND_SET.keys()):
             if 'alias' not in COMMAND_SET[i]:
-                output += f"{i} : {COMMAND_SET[i]['helpmsg']}\n"
-    await message.channel.send(output)
+                embed['fields'].append({
+                    "name" : i,
+                    "value" : COMMAND_SET[i]['helpmsg']
+                })
+    await message.channel.send(embed = discord.Embed.from_dict(embed))
 
 async def listFunc(message, splitcontent):
     marketID = database.getMarket(message.channel.id)
@@ -88,7 +107,15 @@ async def listFunc(message, splitcontent):
         return
 
     if database.addListing(marketID, message.author.id, data['name:'], roundSig(data['price:'])[0], data['notes:'], data['tags:']):
-        await message.channel.send(f"Listing added: {str(data)}")
+        embed = {
+            "color" : 7855479,
+            "author" : {
+                "name" : "Listing Created",
+                "icon_url" : str(client.user.avatar_url)
+            },
+            "fields" : [{'name' : data['name:'], 'value' : data['notes:'] if len(data['notes:']) != 0 else "No notes"}]
+        }
+        await message.channel.send(embed = discord.Embed.from_dict(embed))
     else:
         await message.channel.send("Listing failed to be added, maybe you have too many listings?")
 
@@ -233,16 +260,10 @@ async def searchFunc(message, splitcontent):
         await message.channel.send("No listings found")
         return
     embed = {
-        # "title" : discord.Embed.Empty,
-        # "description" : discord.Embed.Empty,
-        # "url" : discord.Embed.Empty,
         "color" : 7855479,
-        # "timestamp" : discord.Embed.Empty,
         "footer" : {
             "text": "Press ❗ to toggle notification mode, then click on a number to notify the seller"
         },
-        # "thumbnail" : discord.Embed.Empty,
-        # "image" : discord.Embed.Empty,
         "author" : {
             "name" : "Search Results",
             "icon_url" : str(client.user.avatar_url)
