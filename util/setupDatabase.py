@@ -15,7 +15,6 @@ def setup():
             itemName VARCHAR(64) NOT NULL,
             price NUMERIC NOT NULL,
             notes VARCHAR(300),
-            tags VARCHAR(32) ARRAY,
             timeAdded TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
         '''
@@ -43,7 +42,6 @@ def setup():
         CREATE EXTENSION IF NOT EXISTS pg_trgm;
         CREATE INDEX IF NOT EXISTS nameIndex ON listings USING gin (itemName gin_trgm_ops);
         CREATE INDEX IF NOT EXISTS notesIndex ON listings USING gin (notes gin_trgm_ops);
-        CREATE INDEX IF NOT EXISTS tagIndex ON listings USING GIN(tags);
         '''
     )
 

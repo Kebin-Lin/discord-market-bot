@@ -48,8 +48,7 @@ async def listFunc(message, splitcontent):
     data = {
         'price:' : [],
         'name:' : [],
-        'notes:' : [],
-        'tags:' : []
+        'notes:' : []
     }
     curr = ""
     for i in range(2, len(splitcontent)):
@@ -59,14 +58,6 @@ async def listFunc(message, splitcontent):
             data[curr].append(splitcontent[i])
     
     #Compliance checks
-    if len(data['tags:']) > 10:
-        await message.channel.send("Too many tags")
-        return
-    for i in data['tags:']:
-        if len(i) > 32:
-            await message.channel.send("One or more tags are too long")
-            return
-
     if len(data['price:']) == 0:
         await message.channel.send("No price given")
         return
@@ -106,14 +97,14 @@ async def listFunc(message, splitcontent):
         await message.channel.send("Name too long")
         return
 
-    if database.addListing(marketID, message.author.id, data['name:'], roundSig(data['price:'])[0], data['notes:'], data['tags:']):
+    if database.addListing(marketID, message.author.id, data['name:'], data['price:'], data['notes:']):
         embed = {
             "color" : 7855479,
             "author" : {
                 "name" : "Listing Created",
                 "icon_url" : str(client.user.avatar_url)
             },
-            "fields" : [{'name' : data['name:'], 'value' : data['notes:'] if len(data['notes:']) != 0 else "No notes"}]
+            "fields" : [{'name' : f"{data['name:']} - {shortenPrice(data['price:'])}", 'value' : data['notes:'] if len(data['notes:']) != 0 else "No notes"}]
         }
         await message.channel.send(embed = discord.Embed.from_dict(embed))
     else:
@@ -287,7 +278,7 @@ async def searchFunc(message, splitcontent):
             if len(notes) == 0:
                 notes = "No notes"
             embed["fields"].append({
-                "name": f"{'❗' if offset + emotectr in notifiedset else reactions[emotectr]} {i[3]} - {shortenedPrice}",
+                "name": f"{'❗' if offset + emotectr in notifiedset else reactions[emotectr]} {i[3]} - {str(client.get_user(i[2]))} - {shortenedPrice}",
                 "value": notes
             })
             emotectr += 1
@@ -365,7 +356,7 @@ COMMAND_SET = {
     },
     'list' : {
         'helpmsg' : 'Lists a new item, prices are rounded to 4 significant figures and listings expire after 7 days',
-        'usage' : '!market list name: <item name (max 64 characters)> price: <non negative number with up to two decimals> notes: <notes (max 300 characters)> tags: <tag1 (max 32 characters)> <tag2> ... <tag10>',
+        'usage' : '!market list name: <item name (max 64 characters)> price: <non negative number with up to two decimals> notes: <notes (max 300 characters)>',
         'function' : listFunc
     },
     'mylistings' : {

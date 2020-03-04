@@ -8,17 +8,17 @@ DATABASE_URL = os.environ['DATABASE_URL']
 conn = psycopg2.connect(DATABASE_URL, sslmode='require')
 cursor = conn.cursor()
 
-def addListing(marketID, listerID, itemName, price, notes, tags):
+def addListing(marketID, listerID, itemName, price, notes):
     cursor.execute("SELECT * FROM listings WHERE marketID = %s AND listerID = %s LIMIT 10", (marketID, listerID,))
     if len(cursor.fetchall()) == 30: # Too many existing listings
         return False
     cursor.execute(
         '''
-        INSERT INTO listings (marketID, listerID, itemName, price, notes, tags)
-        VALUES (%s, %s, %s, %s, %s, %s)
+        INSERT INTO listings (marketID, listerID, itemName, price, notes)
+        VALUES (%s, %s, %s, %s, %s)
         RETURNING listingID
         ''',
-        (marketID, listerID, itemName, price, notes, tags,)
+        (marketID, listerID, itemName, price, notes,)
     )
     return True
 
@@ -44,22 +44,6 @@ def search(marketID, query):
         LIMIT 100
         ''',
         (marketID, formattedQuery, formattedQuery,)
-    )
-    return cursor.fetchall()
-
-def tagsearch(marketID, tags):
-    cursor.execute(
-        '''
-        SELECT * FROM listings
-        WHERE
-            marketID = %s AND
-            tags @> %s
-        ORDER BY
-            price ASC,
-            timeAdded ASC
-        LIMIT 100
-        ''',
-        (marketID, tags,)
     )
     return cursor.fetchall()
 
