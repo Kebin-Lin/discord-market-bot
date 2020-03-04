@@ -1,7 +1,9 @@
 import os, atexit
-from datetime import datetime
+from datetime import timedelta
+from timeloop import Timeloop
 import psycopg2
 
+tl = Timeloop()
 DATABASE_URL = os.environ['DATABASE_URL']
 conn = psycopg2.connect(DATABASE_URL, sslmode='require')
 cursor = conn.cursor()
@@ -84,7 +86,16 @@ def getMarket(channelID):
         return None
     return output[0]
 
+@tl.job(interval = timedelta(hours = 1))
+def expireAndCommit():
+    print('Expiring old listings and committing to the database...')
+    cursor.execute('SELECT expireRows()')
+    conn.commit()
+    print('Expire and commit complete.')
+
 @atexit.register
 def saveChanges():
     conn.commit()
     cursor.close()
+
+tl.start()

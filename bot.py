@@ -343,7 +343,7 @@ COMMAND_SET = {
         'function' : helpFunc
     },
     'list' : {
-        'helpmsg' : 'Lists a new item, prices are rounded to 4 significant figures',
+        'helpmsg' : 'Lists a new item, prices are rounded to 4 significant figures and listings expire after 7 days',
         'usage' : '!market list name: <item name (max 64 characters)> price: <non negative number with up to two decimals> notes: <notes (max 300 characters)> tags: <tag1 (max 32 characters)> <tag2> ... <tag10>',
         'function' : listFunc
     },
@@ -389,6 +389,5 @@ async def on_message(message):
                 cmd = COMMAND_SET[cmd]['alias']
             await COMMAND_SET[cmd]['function'](message, splitcontent)
     # await message.channel.send(output)
-
 
 client.run(os.environ["token"])
