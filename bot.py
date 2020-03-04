@@ -83,6 +83,9 @@ async def listFunc(message, splitcontent):
         return
     data['price:'] *= ABBREVIATION_DICT[suffix]
     data['price:'] = roundSig(data['price:'])[0]
+    if data['price:'] > 9.999e99:
+        await message.channel.send("Price too large")
+        return
 
     data['notes:'] = ' '.join(data['notes:'])
     if len(data['notes:']) > 300:
@@ -144,7 +147,7 @@ async def mylistingsFunc(message, splitcontent):
         embed["fields"] = []
         emotectr = 0
         for i in listings[offset : offset + 10]:
-            if i[4] % 1 != 0:
+            if i[4] >= 1000 or i[4] % 1 != 0:
                 shortenedPrice = shortenPrice(float(i[4]))
             else:
                 shortenedPrice = shortenPrice(int(i[4]))
@@ -214,9 +217,9 @@ async def mylistingsFunc(message, splitcontent):
                     setupListings(embed, listings)
                     await sentMsg.edit(embed = discord.Embed.from_dict(embed))
             else:
-                if removemode and match < len(listings):
-                    database.removeListing(listings[match][0])
-                    del listings[match]
+                if removemode and offset + match < len(listings):
+                    database.removeListing(listings[offset + match][0])
+                    del listings[offset + match]
                     if len(listings) != 0 and not(offset < len(listings)):
                         offset -= 10
                     setupListings(embed, listings)
@@ -270,7 +273,7 @@ async def searchFunc(message, splitcontent):
         embed["fields"] = []
         emotectr = 0
         for i in listings[offset : offset + 10]:
-            if i[4] % 1 != 0:
+            if i[4] >= 1000 or i[4] % 1 != 0:
                 shortenedPrice = shortenPrice(float(i[4]))
             else:
                 shortenedPrice = shortenPrice(int(i[4]))

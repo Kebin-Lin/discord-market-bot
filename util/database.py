@@ -9,7 +9,7 @@ conn = psycopg2.connect(DATABASE_URL, sslmode='require')
 cursor = conn.cursor()
 
 def addListing(marketID, listerID, itemName, price, notes):
-    cursor.execute("SELECT * FROM listings WHERE marketID = %s AND listerID = %s LIMIT 10", (marketID, listerID,))
+    cursor.execute("SELECT * FROM listings WHERE marketID = %s AND listerID = %s LIMIT 30", (marketID, listerID,))
     if len(cursor.fetchall()) == 30: # Too many existing listings
         return False
     cursor.execute(
