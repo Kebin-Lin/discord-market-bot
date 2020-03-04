@@ -8,7 +8,7 @@ cursor = conn.cursor()
 
 def addListing(marketID, listerID, itemName, price, notes, tags):
     cursor.execute("SELECT * FROM listings WHERE marketID = %s AND listerID = %s LIMIT 10", (marketID, listerID,))
-    if len(cursor.fetchall()) == 32: # Too many existing listings
+    if len(cursor.fetchall()) == 30: # Too many existing listings
         return False
     cursor.execute(
         '''
@@ -29,15 +29,19 @@ def getListings(marketID, listerID):
     return cursor.fetchall()
 
 def search(marketID, query):
+    formattedQuery = f"%{query}%"
     cursor.execute(
         '''
         SELECT * FROM listings
         WHERE
-            marketID = %s AND 
+            marketID = %s AND
             (itemName ILIKE %s OR notes ILIKE %s)
-        LIMIT 10
+        ORDER BY
+            price ASC,
+            timeAdded ASC
+        LIMIT 100
         ''',
-        (marketID, query, query,)
+        (marketID, formattedQuery, formattedQuery,)
     )
     return cursor.fetchall()
 
@@ -48,7 +52,10 @@ def tagsearch(marketID, tags):
         WHERE
             marketID = %s AND
             tags @> %s
-        LIMIT 10
+        ORDER BY
+            price ASC,
+            timeAdded ASC
+        LIMIT 100
         ''',
         (marketID, tags,)
     )

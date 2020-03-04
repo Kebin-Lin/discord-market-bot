@@ -13,6 +13,8 @@ ABBREVIATION_DICT = {
 }
 
 def roundSig(n):
+    if n == 0:
+        return 0, 0
     power = int(math.floor(math.log10(abs(n))))
     if power < 1:
         power = 0
