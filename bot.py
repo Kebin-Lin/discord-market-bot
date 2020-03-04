@@ -384,6 +384,7 @@ print("Starting Market Bot")
 @client.event
 async def on_ready():
     print(f'Logged on as {client.user}')
+    await client.change_presence(activity = discord.Game(name = 'Use "!market help" for a list of commands'))
 
 @client.event
 async def on_message(message):
