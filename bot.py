@@ -45,6 +45,12 @@ async def listFunc(message, splitcontent):
     if marketID == None:
         await message.channel.send("Market not yet set")
         return
+    if database.isPublic(marketID):
+        if not database.isMember(marketID, message.author.id):
+            database.updateMember(marketID, message.author.id)
+    elif not database.isMember(marketID, message.author.id):
+        await message.channel.send("User is not a member of this market")
+        return
     data = {
         'price:' : [],
         'name:' : [],
@@ -237,8 +243,27 @@ async def setmarketFunc(message, splitcontent):
     if len(marketID) > 64:
         await message.channel.send("Market name too long")
         return
-    database.setMarket(message.channel.id, marketID)
-    await message.channel.send(f"Market set to {database.getMarket(message.channel.id)}")
+    if database.setMarket(message.channel.id, marketID):
+        await message.channel.send(f'Market set to "{database.getMarket(message.channel.id)}"')
+    else:
+        await message.channel.send("Market does not exist")
+
+async def createmarketFunc(message, splitcontent):
+    if message.guild != None:
+        await message.channel.send("Markets cannot be created from a server")
+        return
+    marketID = " ".join(splitcontent[2:])
+    if len(marketID) == 0:
+        await message.channel.send("No market name supplied")
+        return
+    if len(marketID) > 64:
+        await message.channel.send("Market name too long")
+        return
+    if database.createMarket(marketID, message.author.id):
+        await message.channel.send(f'Market "{marketID}" created')
+        database.updateMember(marketID, message.author.id, isadmin = True)
+    else:
+        await message.channel.send("Market already exists")
 
 async def searchFunc(message, splitcontent):
     marketID = database.getMarket(message.channel.id)
@@ -351,6 +376,119 @@ async def searchFunc(message, splitcontent):
                         await lister.create_dm()
                     await lister.dm_channel.send(f'<@{message.author.id}> is interested in your item named "{listings[offset + match][3]}"')
 
+async def addmemberFunc(message, splitcontent):
+    marketID = database.getMarket(message.channel.id)
+    if marketID == None:
+        await message.channel.send("Market not yet set")
+        return
+    if not database.isAdmin(marketID, message.author.id):
+        await message.channel.send("User is not an admin of this market")
+        return
+    if len(splitcontent) < 3:
+        await message.channel.send("No user supplied")
+        return
+    memberID = None
+    if len(message.mentions) != 0:
+        memberID = message.mentions[0].id
+    else:
+        try:
+            memberID = client.get_user(eval(splitcontent[3])).id
+        except:
+            await message.channel.send("Invalid user id")
+            return
+    database.updateMember(marketID, memberID)
+    await message.channel.send("Member added")
+
+async def setadminFunc(message, splitcontent):
+    marketID = database.getMarket(message.channel.id)
+    if marketID == None:
+        await message.channel.send("Market not yet set")
+        return
+    if not database.isOwner(marketID, message.author.id):
+        await message.channel.send("User is not the owner of this market")
+        return
+    if len(splitcontent) < 3:
+        await message.channel.send("No user supplied")
+        return
+    memberID = None
+    if len(message.mentions) != 0:
+        memberID = message.mentions[0].id
+    else:
+        try:
+            memberID = client.get_user(eval(splitcontent[3])).id
+        except:
+            await message.channel.send("Invalid user id")
+            return
+    database.updateMember(marketID, memberID, isadmin = True)
+    await message.channel.send("Admin set")
+
+async def demoteFunc(message, splitcontent):
+    marketID = database.getMarket(message.channel.id)
+    if marketID == None:
+        await message.channel.send("Market not yet set")
+        return
+    if not database.isOwner(marketID, message.author.id):
+        await message.channel.send("User is not the owner of this market")
+        return
+    if len(splitcontent) < 3:
+        await message.channel.send("No user supplied")
+        return
+    memberID = None
+    if len(message.mentions) != 0:
+        memberID = message.mentions[0].id
+    else:
+        try:
+            memberID = client.get_user(eval(splitcontent[3])).id
+        except:
+            await message.channel.send("Invalid user id")
+            return
+    database.updateMember(marketID, memberID, isadmin = False)
+    await message.channel.send("User demoted")
+
+async def kickFunc(message, splitcontent):
+    marketID = database.getMarket(message.channel.id)
+    if marketID == None:
+        await message.channel.send("Market not yet set")
+        return
+    if not database.isAdmin(marketID, message.author.id):
+        await message.channel.send("User is not an admin of this market")
+        return
+    if len(splitcontent) < 3:
+        await message.channel.send("No user supplied")
+        return
+    memberID = None
+    if len(message.mentions) != 0:
+        memberID = message.mentions[0].id
+    else:
+        try:
+            memberID = client.get_user(eval(splitcontent[3])).id
+        except:
+            await message.channel.send("Invalid user id")
+            return
+    if database.removeMember(marketID, memberID):
+        await message.channel.send("User removed")
+    else:
+        await message.channel.send("User not a member")
+
+async def setpublicityFunc(message, splitcontent):
+    marketID = database.getMarket(message.channel.id)
+    if marketID == None:
+        await message.channel.send("Market not yet set")
+        return
+    if not database.isOwner(marketID, message.author.id):
+        await message.channel.send("User is not the owner of this market")
+        return
+    if len(splitcontent) < 3:
+        await message.channel.send("No publicity supplied")
+        return
+    publicitydict = {'public' : True, 'private' : False}
+    publicity = splitcontent[2].lower()
+    if publicity not in publicitydict:
+        await message.channel.send("Invalid publicity")
+        return
+    database.changePublic(marketID, publicitydict[publicity])
+    await message.channel.send(f"Market set to {publicity}")
+
 COMMAND_SET = {
     'help' : {
         'helpmsg' : 'Prints out the list of commands available, !market help <cmd> for command usage',
@@ -379,6 +517,36 @@ COMMAND_SET = {
         'helpmsg' : 'Searches the market for items',
         'usage' : '!market search <query>',
         'function' : searchFunc
+    },
+    'createmarket' : {
+        'helpmsg' : 'Creates a new market. Created markets are private by default. Can only be used in DMs',
+        'usage' : '!market createmarket <market name (max 64 characters case sensitive)>',
+        'function' : createmarketFunc
+    },
+    'addmember' : {
+        'helpmsg' : 'Adds a member to the market, can only be used by admins',
+        'usage' : '!market addmember <mention or user id>',
+        'function' : addmemberFunc
+    },
+    'setadmin' : {
+        'helpmsg' : 'Sets a member as an admin of the market, can only be used by the market owner',
+        'usage' : '!market setadmin <mention or user id>',
+        'function' : setadminFunc
+    },
+    'demote' : {
+        'helpmsg' : 'Sets a member as a non-admin user, can oly be used by the market owner',
+        'usage' : '!market demote <mention or user id>',
+        'function' : demoteFunc
+    },
+    'kick' : {
+        'helpmsg' : 'Removes a member from the market and deletes their listings, can only be used by admins',
+        'usage' : '!market kick <mention or user id>',
+        'function' : kickFunc
+    },
+    'setpublicity' : {
+        'helpmsg' : 'Sets the publicity of a market, can only be used by the market owner',
+        'usage' : '!market setpublicity <public|private>',
+        'function' : setpublicityFunc
     }
 }
 

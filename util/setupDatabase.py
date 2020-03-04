@@ -8,14 +8,35 @@ cursor = conn.cursor()
 def setup():
     cursor.execute(
         '''
+        CREATE TABLE IF NOT EXISTS markets(
+            marketID VARCHAR(64) PRIMARY KEY,
+            ownerID NUMERIC NOT NULL,
+            public BOOL DEFAULT FALSE
+        )
+        '''
+    )
+    cursor.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS members(
+            marketID VARCHAR(64) NOT NULL REFERENCES markets(marketID) ON DELETE CASCADE,
+            memberID NUMERIC NOT NULL,
+            isadmin BOOL DEFAULT FALSE,
+            CONSTRAINT unq_marketID_memberID UNIQUE(marketID, memberID)
+        )
+        '''
+    )
+    cursor.execute(
+        '''
         CREATE TABLE IF NOT EXISTS listings(
             listingID SERIAL PRIMARY KEY,
-            marketID VARCHAR(64) NOT NULL,
+            marketID VARCHAR(64) NOT NULL REFERENCES markets(marketID) ON DELETE CASCADE,
             listerID NUMERIC NOT NULL,
             itemName VARCHAR(64) NOT NULL,
             price NUMERIC NOT NULL,
             notes VARCHAR(300),
-            timeAdded TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            timeAdded TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            FOREIGN KEY (marketID, listerID) REFERENCES members(marketID, memberID)
+            ON DELETE CASCADE
         )
         '''
     )
