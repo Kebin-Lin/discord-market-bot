@@ -62,8 +62,8 @@ def createMarket(marketID, ownerID, public = False):
     return True
 
 def addListing(marketID, listerID, itemName, price, notes):
-    cursor.execute("SELECT 1 FROM listings WHERE marketID = %s AND listerID = %s LIMIT 30", (marketID, listerID,))
-    if len(cursor.fetchall()) == 30: # Too many existing listings
+    cursor.execute("SELECT 1 FROM listings WHERE marketID = %s AND listerID = %s LIMIT 15", (marketID, listerID,))
+    if len(cursor.fetchall()) == 15: # Too many existing listings
         return False
     cursor.execute(
         '''
